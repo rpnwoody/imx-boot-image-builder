@@ -2,6 +2,7 @@
 
 # imx-bib.sh : i.MX Boot Image Builder
 # 05/03/2022 - Curtis Wald curtis.wald@nxp.com
+#              concept from Robert Mcewan
 
 # Description: Build boot image
 # i.MX application processors supported: 8mq 8mm, 8mn, 8mp, 8ulp
@@ -19,16 +20,6 @@
 # completes the flash.bin file is found at the same dir level as the
 # script. For example if 8ulp was the build, then 8ulp_evk_flash.bin
 # is created.
-
-# meta-imx repository provides the Software Content Register (SCR)
-# which lists all the software package versions. At the time this
-# script was developed, meta-imx repository tag and branch naming had
-# not quite yet adopted the Linux Factory naming scheme:
-# lf-5.15.5-1.0.0, but instead for tags used rel_imx_5.15.5_1.0.0 and
-# branch name honister-5.15.5-1.0.0. The script variable BRANCH is
-# used for specifying which meta-imx branch to use.  The -v version
-# command line option can override the hardcoded value in the script
-# or the BRANCH can be edited below to change to a different release. 
 
 
 # For each different i.MX chip, u-boot must be re-built. Provide the
@@ -48,14 +39,13 @@ magenta=`tput setaf 5`
 cyan=`tput setaf 6`
 white=`tput setaf 7`
 
-# meta-imx Release Branch
-BRANCH="honister-5.15.5-1.0.0"
 # meta-imx repo
 REPO_METAIMX="https://source.codeaurora.org/external/imx/meta-imx"
 
 # Base name location for content download
 REPO_CAF="https://source.codeaurora.org/external/imx"
 NXP_FILES="https://www.nxp.com/lgfiles/NMG/MAD/YOCTO"
+IMX_SW="https://www.nxp.com/imxlinux"
 
 # Make command option to build silent. Providing -d to script disables
 MFLAG=-s
@@ -148,8 +138,14 @@ function hostPkg {
 
 # Description: clone meta-imx
 function repo_get_metaimx {
-	echo "git clone $REPO_CAF/meta-imx -b $BRANCH --depth=1"
-	git clone $REPO_CAF/meta-imx -b $BRANCH --depth=1
+    README=$(wget -qO- $IMX_SW | grep README | head -1 | cut -d '"' -f6)
+    MANURL=$(wget -qO- $README | grep 'repo init' | sed -n 2p )
+    MANIFEST=$(echo $MANURL | cut -d ' ' -f6)
+    BRAN=$(echo $MANURL | cut -d ' ' -f8)
+    BRANCH=$(wget -qO- $REPO_CAF/imx-manifest/tree/$BRAN?h=$MANIFEST | grep 'refs/tags' | grep -o "[0-9].*" | cut -d ';' -f3 | cut -d '&' -f1)
+    echo "git clone $REPO_CAF/meta-imx -b $BRANCH --depth=1"
+    git clone $REPO_CAF/meta-imx -b $BRANCH --depth=1
+
 }
 
 
@@ -162,7 +158,7 @@ function repo_get {
 
 
 # Global Variables
-SCR="SCR-5.15.5-1.0.0.txt"
+SCR=""
 FN_FW_POWER="firmware-upower"
 FN_FW_SENTINEL="firmware-sentinel"
 FN_M33DEMO="imx8ulp-m33-demo"
@@ -181,14 +177,13 @@ TAG=""
 # NOTE: meta-imx must be available before calling
 function setupVar {
     cd meta-imx
-
+    SCR=`ls SCR-*`
     REV=$(egrep "^Release - Linux" $SCR)
     LINUX_KER=$(echo $REV | cut -d ' ' -f4 | cut -d '-' -f1 )
     LINUX_REL=$(echo $REV | cut -d ' ' -f4 | cut -d '-' -f2)
     TAG="lf-$LINUX_KER-$LINUX_REL"
     echo "LINUX_KER= " $LINUX_KER
     echo "LINUX_REL= " $LINUX_REL
-    echo "meta-imx branch = " $BRANCH
     echo "TAG =      " $TAG
 
     FW_IMX_SCR=$(grep $FN_FW_IMX $SCR)
@@ -360,6 +355,7 @@ export CROSS_COMPILE=aarch64-linux-gnu-
 
 # First get meta-imx repo which has SCR for package versions
 [ ! -d meta-imx ] && repo_get_metaimx
+
 
 # setup variables for this release using meta-imx/SCR-### versions
 setupVar
