@@ -129,7 +129,7 @@ done
 # Description: Install host packages if missing
 function hostPkg {
     [ ! -f /usr/bin/aarch64-linux-gnu-gcc ] && \
-	sudo apt install -y crossbuild-essential-arm64 gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+	sudo apt install -y crossbuild-essential-arm64 gcc-aarch64-linux-gnu g++-aarch64-linux-gnu bison flex libssl-dev
 
     [ ! -f /usr/bin/curl ] && \
 	sudo apt install -y curl
