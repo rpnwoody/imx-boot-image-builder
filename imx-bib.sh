@@ -129,7 +129,7 @@ done
 # Description: Install host packages if missing
 function hostPkg {
     [ ! -f /usr/bin/aarch64-linux-gnu-gcc ] && \
-	sudo apt install -y crossbuild-essential-arm64 gcc-aarch64-linux-gnu g++-aarch64-linux-gnu bison flex libssl-dev
+	sudo apt install -y crossbuild-essential-arm64 gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
     [ ! -f /usr/bin/curl ] && \
 	sudo apt install -y curl
@@ -140,8 +140,8 @@ function hostPkg {
 function repo_get_metaimx {
     README=$(wget -qO- $IMX_SW | grep README | head -1 | cut -d '"' -f6)
     MANURL=$(wget -qO- $README | grep 'repo init' | sed -n 2p )
-    MANIFEST=$(echo $MANURL | cut -d ' ' -f7)
-    BRAN=$(echo $MANURL | cut -d ' ' -f9)
+    MANIFEST=$(echo $MANURL | cut -d ' ' -f6)
+    BRAN=$(echo $MANURL | cut -d ' ' -f8)
     BRANCH=$(wget -qO- $REPO_CAF/imx-manifest/tree/$BRAN?h=$MANIFEST | grep 'refs/tags' | grep -o "[0-9].*" | cut -d ';' -f3 | cut -d '&' -f1)
     echo "git clone $REPO_CAF/meta-imx -b $BRANCH --depth=1"
     git clone $REPO_CAF/meta-imx -b $BRANCH --depth=1
@@ -355,6 +355,7 @@ export CROSS_COMPILE=aarch64-linux-gnu-
 
 # First get meta-imx repo which has SCR for package versions
 [ ! -d meta-imx ] && repo_get_metaimx
+
 
 # setup variables for this release using meta-imx/SCR-### versions
 setupVar
