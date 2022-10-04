@@ -40,10 +40,10 @@ cyan=`tput setaf 6`
 white=`tput setaf 7`
 
 # meta-imx repo
-REPO_METAIMX="https://source.codeaurora.org/external/imx/meta-imx"
+REPO_METAIMX="https://github.com/nxp-imx/meta-imx"
 
 # Base name location for content download
-REPO_CAF="https://source.codeaurora.org/external/imx"
+REPO_GIT="https://github.com/nxp-imx"
 NXP_FILES="https://www.nxp.com/lgfiles/NMG/MAD/YOCTO"
 IMX_SW="https://www.nxp.com/imxlinux"
 
@@ -52,12 +52,15 @@ MFLAG=-s
 
 BDIR=`pwd`
 
+VERULP=""
+
 # Description: print help message and usage 
 function usage {
-        echo "Usage: $(basename $0) [-h] -p <soc> [-v release] [-c]" 2>&1
+        echo "Usage: $(basename $0) [-h] -p <soc> -w <A0|A1> [-v release] [-c]" 2>&1
         echo 'Create bootimage'
         echo '   -p soc       mandatory. options: 8ulp 8mm 8mn 8mp 8mq' 
         echo '   -v release   release version, example: honister-5.15.5-1.0.0'
+	echo '   -w A0|A1     which 8ULP version '
 	echo '   -c clean     make clean then make'
 	echo '   -r remove    remove all'
 	echo '   -d           enable script debug '
@@ -87,12 +90,16 @@ if [[ ${#} -eq 0 ]]; then
 fi
 
 # Define list of arguments expected in the input
-optstring=":hrcdp:v:"
+optstring=":hrcdp:v:w:"
 
 while getopts ${optstring} arg; do
     case ${arg} in
 	v)
 	    BRANCH="${OPTARG}"
+	    ;;
+	w)
+	    VERULP="${OPTARG}"
+	    echo "VERULP = " $VERULP
 	    ;;
 	p)
 	    SOC="${OPTARG}"
@@ -138,21 +145,23 @@ function hostPkg {
 
 # Description: clone meta-imx
 function repo_get_metaimx {
+
     README=$(wget -qO- $IMX_SW | grep README | head -1 | cut -d '"' -f6)
-    MANURL=$(wget -qO- $README | grep 'repo init' | sed -n 2p )
-    MANIFEST=$(echo $MANURL | cut -d ' ' -f7)
-    BRAN=$(echo $MANURL | cut -d ' ' -f9)
-    BRANCH=$(wget -qO- $REPO_CAF/imx-manifest/tree/$BRAN?h=$MANIFEST | grep 'refs/tags' | grep -o "[0-9].*" | cut -d ';' -f3 | cut -d '&' -f1)
-    echo "git clone $REPO_CAF/meta-imx -b $BRANCH --depth=1"
-    git clone $REPO_CAF/meta-imx -b $BRANCH --depth=1
+    BRANCH=$(wget -qO- $README |  awk '/\$: repo init/ {count++} count==3 {print $12}')
+    MANIFEST=$(wget -qO- $README |  awk '/\$: repo init/ {count++} count==3 {print $23}')
+    RELNAME=$(echo $BRANCH | cut -d '-' -f3)
+    RELVER=$(basename $MANIFEST .xml | cut -b 5-)
+
+    echo "git clone $REPO_GIT/meta-imx -b $RELNAME-$RELVER "
+    git clone $REPO_GIT/meta-imx -b $RELNAME-$RELVER
 
 }
 
 
-# Description: git clone codeaurora repositories
+# Description: git clone github repositories
 function repo_get {
     [ -n $V ] && set -x
-    git clone $REPO_CAF/$1 -b $TAG --depth=1
+    git clone $REPO_GIT/$1 -b $TAG --depth=1
     [ -n $V ] && set +x
 }
 
@@ -247,7 +256,7 @@ function sentinel_fetch {
     chmod a+x ./sent.bin
     ./sent.bin --auto-accept
     cd firmware-sentinel-*
-    cp mx8ulpa0-ahab-container.img ../../imx-mkimage/iMX8ULP
+    cp mx8ulpa?-ahab-container.img ../../imx-mkimage/iMX8ULP
     cd ../..
 }
 
@@ -259,7 +268,13 @@ function upwr_fetch {
     chmod a+x ./pwr.bin
     ./pwr.bin --auto-accept
     cd firmware-upower-*
-    cp upower.bin ../../imx-mkimage/iMX8ULP
+    cp upower_a?.bin ../../imx-mkimage/iMX8ULP
+    if [[ $VERULP == "A1" ]]; then
+	ln -s ../../imx-mkimage/iMX8ULP/upower_a1.bin ../../imx-mkimage/iMX8ULP/upower.bin;
+    else
+	ln -s ../../imx-mkimage/iMX8ULP/upower_a0.bin ../../imx-mkimage/iMX8ULP/upower.bin;
+    fi
+    
     cd ../..
 }
 
@@ -338,8 +353,12 @@ build_image() {
     cd imx-mkimage/
     pwd
     [ -n "$CLEAN" ] && make SOC=iMX$SOCU clean 
-    make SOC=iMX$SOCU $FLASH_IMG
-    cp ./$MKIMG_8DIR/flash.bin ../${SOC}_evk_flash.bin
+    if [[ $SOC == "8ulp" ]]; then
+	make SOC=iMX$SOCU REV=$VERULP $FLASH_IMG
+    else
+	make SOC=iMX$SOCU $FLASH_IMG
+    fi
+    cp ./$MKIMG_8DIR/flash.bin ../${SOC}_${VERULP}_evk_flash.bin
     cd ..    
     [ -n "$V" ] && set +x
     echo ${green}Boot Image success!${clr}
