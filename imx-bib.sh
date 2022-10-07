@@ -311,7 +311,7 @@ function download {
 
 # Description: Build u-boot, if -c script option, clean target first
 function build_uboot {
-    echo ${cyan} "Building u-boot"${clr}
+    echo ${cyan}"Building u-boot"${clr}
 
     [ -n "$V" ] && set -x
 
