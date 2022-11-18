@@ -122,6 +122,8 @@ while getopts ${optstring} arg; do
 	    ;;
 	r)
 	    remove_all; exit;;
+        h)
+	    usage;;
 	?)
 	echo "Invalid option: -${OPTARG}."
 	echo
@@ -149,6 +151,12 @@ function hostPkg {
 
     [ ! -d /usr/include/openssl ] && \
 	sudo apt install -y libssl-dev
+
+    [ ! -d /usr/include/gnutls ] && \
+        sudo apt install -y libgnutls28-dev
+
+    [ ! -f /usr/bin/dtc ] && \
+	sudo apt install -y device-tree-compiler
 }
 
 
