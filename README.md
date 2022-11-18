@@ -9,7 +9,9 @@ Supported i.MX targets:
 - 8ulp [8ULPLPD4-EVK]
 
 ## Example
-To create the boot loader for 8ULPLPD4-EVK revison A0.1: `./imx-bib.sh -p 8ulp -w A0`
+To create the boot loader for 8ULPLPD4-EVK revison A0.1:
+  
+  `./imx-bib.sh -p 8ulp -w A0`
 
 # Usage
 ```
