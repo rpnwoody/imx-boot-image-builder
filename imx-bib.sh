@@ -61,12 +61,13 @@ function usage {
         echo '   -p soc       mandatory. options: 8ulp 8mm 8mn 8mp 8mq' 
         echo '   -v release   release version, example: honister-5.15.5-1.0.0'
 	echo '   -w A0|A1     which 8ULP version '
-	echo '   -c clean     make clean then make'
-	echo '   -r remove    remove all'
+	echo '   -c           make clean then make'
+	echo '   -r           remove all'
 	echo '   -d           enable script debug '
 	echo '   -h           Help message'
 	echo ''
-	echo "${bold} Example:  ./$(basename $0) -p 8ulp ${clr}"
+	echo "${bold} Example:  ./$(basename $0) -p 8ulp -w A1 ${clr}"
+	echo "${bold} Example:  ./$(basename $0) -p 8mm ${clr}"
         exit 1
 }
 
@@ -372,10 +373,11 @@ build_image() {
     [ -n "$CLEAN" ] && make SOC=iMX$SOCU clean 
     if [[ $SOC == "8ulp" ]]; then
 	make SOC=iMX$SOCU REV=$VERULP $FLASH_IMG
+        cp ./$MKIMG_8DIR/flash.bin ../${SOC}_${VERULP}_evk_flash.bin
     else
 	make SOC=iMX$SOCU $FLASH_IMG
+        cp ./$MKIMG_8DIR/flash.bin ../${SOC}_evk_flash.bin
     fi
-    cp ./$MKIMG_8DIR/flash.bin ../${SOC}_${VERULP}_evk_flash.bin
     cd ..    
     [ -n "$V" ] && set +x
     echo ${green}Boot Image success!${clr}
