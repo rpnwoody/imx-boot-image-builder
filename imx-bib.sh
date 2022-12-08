@@ -56,10 +56,9 @@ VERULP=""
 
 # Description: print help message and usage 
 function usage {
-        echo "Usage: $(basename $0) [-h] -p <soc> -w <A0|A1> [-v release] [-c]" 2>&1
+        echo "Usage: $(basename $0) [-h] -p <soc> -w <A0|A1> [-c]" 2>&1
         echo 'Create bootimage'
         echo '   -p soc       mandatory. options: 8ulp 8mm 8mn 8mp 8mq' 
-        echo '   -v release   release version, example: honister-5.15.5-1.0.0'
 	echo '   -w A0|A1     which 8ULP version '
 	echo '   -c           make clean then make'
 	echo '   -r           remove all'
@@ -91,13 +90,10 @@ if [[ ${#} -eq 0 ]]; then
 fi
 
 # Define list of arguments expected in the input
-optstring=":hrcdp:v:w:"
+optstring=":hrcdp:w:"
 
 while getopts ${optstring} arg; do
     case ${arg} in
-	v)
-	    BRANCH="${OPTARG}"
-	    ;;
 	w)
 	    VERULP="${OPTARG}"
 	    echo "VERULP = " $VERULP
@@ -178,9 +174,9 @@ function repo_get_metaimx {
 
 # Description: git clone github repositories
 function repo_get {
-    [ -n $V ] && set -x
+    [ -n "$V" ] && set -x
     git clone $REPO_GIT/$1 -b $TAG --depth=1
-    [ -n $V ] && set +x
+    [ -n "$V" ] && set +x
 }
 
 
@@ -356,7 +352,9 @@ function build_atf {
     echo ${cyan}Building ATF Image${clr}
     cd imx-atf/
     [ -n "$CLEAN" ] && make clean PLAT=imx$SOC
+    [ -n "$V" ] && set -x
     make ${MFLAG} PLAT=imx$SOC bl31
+    [ -n "$V" ] && set +x
     cp ./build/imx$SOC/release/bl31.bin ../imx-mkimage/$MKIMG_8DIR
     cd ..
     echo ${green}ATF build complete${clr}
