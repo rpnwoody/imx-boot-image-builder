@@ -105,6 +105,7 @@ while getopts ${optstring} arg; do
 	    if [[ $SOC == "8ulp" ]]; then
 		MKIMG_8DIR=iMX8ULP
 		FLASH_IMG=flash_singleboot_m33
+		VERULP="A1"
 	    else
 		MKIMG_8DIR=iMX8M
 		FLASH_IMG=flash_evk
