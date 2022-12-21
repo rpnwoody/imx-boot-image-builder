@@ -56,17 +56,19 @@ VERULP=""
 
 # Description: print help message and usage 
 function usage {
-        echo "Usage: $(basename $0) [-h] -p <soc> -w <A0|A1> [-c]" 2>&1
+        echo "Usage: $(basename $0) [-h] -p <soc> [-w <A0|A1>] [-c]" 2>&1
         echo 'Create bootimage'
         echo '   -p soc       mandatory. options: 8ulp 8mm 8mn 8mp 8mq' 
-	echo '   -w A0|A1     which 8ULP version '
+	echo '   -w A0|A1     which 8ULP version, default A1 if not given'
+	echo '   -m           EVK with ddr4 memory. Supported: 8mn, 8mm, 8mp. If no -m, EVK with LPDDR4'
 	echo '   -c           make clean then make'
 	echo '   -r           remove all'
 	echo '   -d           enable script debug '
 	echo '   -h           Help message'
 	echo ''
-	echo "${bold} Example:  ./$(basename $0) -p 8ulp -w A1 ${clr}"
-	echo "${bold} Example:  ./$(basename $0) -p 8mm ${clr}"
+	echo "${bold} Example 8ulp A1:    ./$(basename $0) -p 8ulp ${clr}"
+	echo "${bold} Example 8mn LPDDR4: ./$(basename $0) -p 8mn ${clr}"
+	echo "${bold} Example 8mn DDR4:   ./$(basename $0) -p 8mn -m ${clr}"
         exit 1
 }
 
@@ -90,7 +92,7 @@ if [[ ${#} -eq 0 ]]; then
 fi
 
 # Define list of arguments expected in the input
-optstring=":hrcdp:w:"
+optstring=":mhrcdp:w:"
 
 while getopts ${optstring} arg; do
     case ${arg} in
@@ -109,6 +111,14 @@ while getopts ${optstring} arg; do
 	    else
 		MKIMG_8DIR=iMX8M
 		FLASH_IMG=flash_evk
+	    fi
+	    ;;
+	m)
+	    if [[ $SOC == "8mm" || $SOC == "8mp" || $SOC == "8mn" ]]; then
+		FLASH_IMG=flash_ddr4_evk
+	    else
+		echo $SOC " EVK does not support ddr4"
+		exit 1
 	    fi
 	    ;;
 	c)
@@ -226,7 +236,7 @@ function setupVar {
 	echo "FWSENT =   " $FWSENT
 	echo "FWM33DEMO= " $FWM33DEMO
     fi
-
+    echo "FLASH_IMG= " $FLASH_IMG
     cd ..
 }
 
@@ -234,19 +244,33 @@ function setupVar {
 function fw_install {
     cd $BDIR	# start at top level dir
 
-    # check uboot-imx - install if missing
+    # check uboot-imx - install lpddr4 if missing
     if [[ ! -f uboot-imx/lpddr4_pmu_train_1d_dmem.bin ]]; then
-	echo "Installing ddr files in u-boot"
+	echo "Installing lpdd4r files in u-boot"
 	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/lpddr4_pmu_train_?d_?mem.bin $BDIR/uboot-imx
     fi
+
+    # uboot-imx ddr4 files
+    if [[ ! -f uboot-imx/ddr4_dmem_1d.bin ]]; then
+	echo "Installing ddr4 files in u-boot"
+	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/ddr4_?mem_?d.bin $BDIR/uboot-imx
+	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/ddr4_?mem_?d_2020*.bin $BDIR/uboot-imx
+	fi
     
-    # check imx-mkimage - install if missing
+    # check imx-mkimage - install lpddr4 if missing
     if [[ ! -f imx-mkimage/$MKIMG_8DIR/lpddr4_pmu_train_1d_dmem.bin ]]; then
-	echo "Installing ddr files in imx-mkimage/$MKIMG_8DIR"
+	echo "Installing lpddr4 files in imx-mkimage/$MKIMG_8DIR"
 	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/lpddr4_*.bin imx-mkimage/$MKIMG_8DIR
 	[ $SOC != "8ulp" ] && cp fw-imx/firmware-imx*/firmware/hdmi/cadence/signed_hdmi_imx8m.bin imx-mkimage/$MKIMG_8DIR
 
-    fi	
+    fi
+    # imx-mkimage ddr4 files
+    if [[ ! -f imx-mkimage/$MKIMG_8DIR/ddr4_dmem_1d.bin ]]; then
+	echo "Installing ddr4 files in imx-mkimage/$MKIMG_8DIR"
+	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/ddr4_?mem_?d.bin imx-mkimage/$MKIMG_8DIR
+	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/ddr4_?mem_?d_2020*.bin imx-mkimage/$MKIMG_8DIR
+    fi
+
 }
 
 # Description: Download firmware-imx which provides ddr and hdmi bin
