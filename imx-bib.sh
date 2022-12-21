@@ -99,6 +99,7 @@ while getopts ${optstring} arg; do
 	w)
 	    VERULP="${OPTARG}"
 	    echo "VERULP = " $VERULP
+	    SOC_FLASH_NAME=$SOC"_"$VERULP"_evk_flash.bin"
 	    ;;
 	p)
 	    SOC="${OPTARG}"
@@ -108,14 +109,20 @@ while getopts ${optstring} arg; do
 		MKIMG_8DIR=iMX8ULP
 		FLASH_IMG=flash_singleboot_m33
 		VERULP="A1"
+		UBOOT_DEFCONFIG="imx8ulp_evk_defconfig"
+		SOC_FLASH_NAME=$SOC"_"$VERULP"_evk_flash.bin"
 	    else
 		MKIMG_8DIR=iMX8M
 		FLASH_IMG=flash_evk
+		UBOOT_DEFCONFIG="imx"$SOC"_evk_defconfig"
+		SOC_FLASH_NAME=$SOC"_evk_flash.bin"
 	    fi
 	    ;;
 	m)
 	    if [[ $SOC == "8mm" || $SOC == "8mp" || $SOC == "8mn" ]]; then
 		FLASH_IMG=flash_ddr4_evk
+		UBOOT_DEFCONFIG="imx"$SOC"_ddr4_evk_defconfig"
+		SOC_FLASH_NAME=$SOC"_ddr4_evk_flash.bin"
 	    else
 		echo $SOC " EVK does not support ddr4"
 		exit 1
@@ -237,6 +244,7 @@ function setupVar {
 	echo "FWM33DEMO= " $FWM33DEMO
     fi
     echo "FLASH_IMG= " $FLASH_IMG
+    echo "UBOOT_DEFCONFIG= " $UBOOT_DEFCONFIG
     cd ..
 }
 
@@ -244,33 +252,19 @@ function setupVar {
 function fw_install {
     cd $BDIR	# start at top level dir
 
-    # check uboot-imx - install lpddr4 if missing
+    # check uboot-imx - install ddr files if missing
     if [[ ! -f uboot-imx/lpddr4_pmu_train_1d_dmem.bin ]]; then
-	echo "Installing lpdd4r files in u-boot"
-	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/lpddr4_pmu_train_?d_?mem.bin $BDIR/uboot-imx
+	echo "Installing ddr files in u-boot"
+	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/*.bin $BDIR/uboot-imx
     fi
 
-    # uboot-imx ddr4 files
-    if [[ ! -f uboot-imx/ddr4_dmem_1d.bin ]]; then
-	echo "Installing ddr4 files in u-boot"
-	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/ddr4_?mem_?d.bin $BDIR/uboot-imx
-	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/ddr4_?mem_?d_2020*.bin $BDIR/uboot-imx
-	fi
-    
     # check imx-mkimage - install lpddr4 if missing
     if [[ ! -f imx-mkimage/$MKIMG_8DIR/lpddr4_pmu_train_1d_dmem.bin ]]; then
-	echo "Installing lpddr4 files in imx-mkimage/$MKIMG_8DIR"
-	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/lpddr4_*.bin imx-mkimage/$MKIMG_8DIR
+	echo "Installing ddr files in imx-mkimage/$MKIMG_8DIR"
+	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/*.bin imx-mkimage/$MKIMG_8DIR
 	[ $SOC != "8ulp" ] && cp fw-imx/firmware-imx*/firmware/hdmi/cadence/signed_hdmi_imx8m.bin imx-mkimage/$MKIMG_8DIR
 
     fi
-    # imx-mkimage ddr4 files
-    if [[ ! -f imx-mkimage/$MKIMG_8DIR/ddr4_dmem_1d.bin ]]; then
-	echo "Installing ddr4 files in imx-mkimage/$MKIMG_8DIR"
-	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/ddr4_?mem_?d.bin imx-mkimage/$MKIMG_8DIR
-	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/ddr4_?mem_?d_2020*.bin imx-mkimage/$MKIMG_8DIR
-    fi
-
 }
 
 # Description: Download firmware-imx which provides ddr and hdmi bin
@@ -313,7 +307,7 @@ function upwr_fetch {
     else
 	ln -s ../../imx-mkimage/iMX8ULP/upower_a0.bin ../../imx-mkimage/iMX8ULP/upower.bin;
     fi
-    
+   
     cd ../..
 }
 
@@ -356,7 +350,7 @@ function build_uboot {
 
     cd uboot-imx
     [ -n "$CLEAN" ] && make ${MFLAG} distclean
-    [ ! -f .config ] && make ${MFLAG} imx${SOC}_evk_defconfig
+    [ ! -f .config ] && make ${MFLAG} $UBOOT_DEFCONFIG
     make ${MFLAG} -j `nproc`
     
     cp ./tools/mkimage ../imx-mkimage/$MKIMG_8DIR/mkimage_uboot
@@ -396,10 +390,10 @@ build_image() {
     [ -n "$CLEAN" ] && make SOC=iMX$SOCU clean 
     if [[ $SOC == "8ulp" ]]; then
 	make SOC=iMX$SOCU REV=$VERULP $FLASH_IMG
-        cp ./$MKIMG_8DIR/flash.bin ../${SOC}_${VERULP}_evk_flash.bin
+        cp ./$MKIMG_8DIR/flash.bin ../${SOC_FLASH_NAME}
     else
 	make SOC=iMX$SOCU $FLASH_IMG
-        cp ./$MKIMG_8DIR/flash.bin ../${SOC}_evk_flash.bin
+        cp ./$MKIMG_8DIR/flash.bin ../${SOC_FLASH_NAME}
     fi
     cd ..    
     [ -n "$V" ] && set +x
@@ -430,6 +424,6 @@ fw_install
 build_uboot
 build_atf
 build_image
-echo "${yellow}Done ${SOC}_evk_flash.bin ${clr}"
+echo "${yellow}Done ${SOC_FLASH_NAME} ${clr}"
 exit 0
 
