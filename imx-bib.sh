@@ -26,6 +26,8 @@
 # -c script argument to clean and then build if the downloads have
 # completed.  Example: imx-bib.sh -p 8mp -c
 
+#Script version
+SCR_VER="1.0"
 
 # Define script colors
 bold=`tput bold`
@@ -57,7 +59,7 @@ VERULP=""
 # Description: print help message and usage 
 function usage {
         echo "Usage: $(basename $0) [-h] -p <soc> [-w <A0|A1>] [-c]" 2>&1
-        echo 'Create bootimage'
+        echo 'Create bootimage. Version ' ${SCR_VER}
         echo '   -p soc       mandatory. options: 8ulp 8mm 8mn 8mp 8mq' 
 	echo '   -w A0|A1     which 8ULP version, default A1 if not given'
 	echo '   -m           EVK with ddr4 memory. Supported: 8mn, 8mm, 8mp. If no -m, EVK with LPDDR4'
