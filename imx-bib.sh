@@ -26,8 +26,16 @@
 # -c script argument to clean and then build if the downloads have
 # completed.  Example: imx-bib.sh -p 8mp -c
 
+# exit script on any error
+#set -e
+# keep track of the last executed command
+#trap 'last_command=$current_command; current_command=$BASH_COMMAND' DEBUG
+# echo an error message before exiting
+#trap 'echo "\"${last_command}\" command failed with exit code $?."' EXIT
+
+
 #Script version
-SCR_VER="1.0"
+SCR_VER="2.0"
 
 # Define script colors
 bold=`tput bold`
@@ -60,7 +68,7 @@ VERULP=""
 function usage {
         echo "Usage: $(basename $0) [-h] -p <soc> [-w <A0|A1>] [-c]" 2>&1
         echo 'Create bootimage. Version ' ${SCR_VER}
-        echo '   -p soc       mandatory. options: 8ulp 8mm 8mn 8mp 8mq' 
+        echo '   -p soc       mandatory. options: 8ulp 8mm 8mn 8mp 8mq 93' 
 	echo '   -w A0|A1     which 8ULP version, default A1 if not given'
 	echo '   -m           EVK with ddr4 memory. Supported: 8mn, 8mm, 8mp. If no -m, EVK with LPDDR4'
 	echo '   -c           make clean then make'
@@ -108,13 +116,18 @@ while getopts ${optstring} arg; do
 	    SOCU=$(echo ${SOC}|tr "[:lower:]" "[:upper:]");
 	    echo "SOC  = " $SOC
 	    if [[ $SOC == "8ulp" ]]; then
-		MKIMG_8DIR=iMX8ULP
+		MKIMG_DIR=iMX8ULP
 		FLASH_IMG=flash_singleboot_m33
 		VERULP="A1"
 		UBOOT_DEFCONFIG="imx8ulp_evk_defconfig"
 		SOC_FLASH_NAME=$SOC"_"$VERULP"_evk_flash.bin"
+	    elif [[ $SOC == "93" ]]; then
+		MKIMG_DIR=iMX9
+		FLASH_IMG=flash_singleboot
+		UBOOT_DEFCONFIG="imx93_11x11_evk_defconfig"
+		SOC_FLASH_NAME="imx"$SOC"_11x11""_evk_flash.bin"
 	    else
-		MKIMG_8DIR=iMX8M
+		MKIMG_DIR=iMX8M
 		FLASH_IMG=flash_evk
 		UBOOT_DEFCONFIG="imx"$SOC"_evk_defconfig"
 		SOC_FLASH_NAME=$SOC"_evk_flash.bin"
@@ -233,7 +246,7 @@ function setupVar {
     FW_IMX=$(echo $FW_IMX_SCR | cut -d ' ' -f2)
     echo "FW_IMX =   " $FW_IMX
 
-    if [[ $SOC == "8ulp" ]]; then
+    if [[ $SOC == "8ulp" ]] | [[ $SOC == "93" ]]; then
 	FW_UPOW=$(grep $FN_FW_POWER $SCR)
 	FWPOW=$(echo $FW_UPOW | cut -d ' ' -f2)
 	FW_SENT=$(grep $FN_FW_SENTINEL $SCR)
@@ -261,10 +274,10 @@ function fw_install {
     fi
 
     # check imx-mkimage - install lpddr4 if missing
-    if [[ ! -f imx-mkimage/$MKIMG_8DIR/lpddr4_pmu_train_1d_dmem.bin ]]; then
-	echo "Installing ddr files in imx-mkimage/$MKIMG_8DIR"
-	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/*.bin imx-mkimage/$MKIMG_8DIR
-	[ $SOC != "8ulp" ] && cp fw-imx/firmware-imx*/firmware/hdmi/cadence/signed_hdmi_imx8m.bin imx-mkimage/$MKIMG_8DIR
+    if [[ ! -f imx-mkimage/$MKIMG_DIR/lpddr4_pmu_train_1d_dmem.bin ]]; then
+	echo "Installing ddr files in imx-mkimage/$MKIMG_DIR"
+	cp fw-imx/firmware-imx*/firmware/ddr/synopsys/*.bin imx-mkimage/$MKIMG_DIR
+	[ $SOC != "8ulp" ] && cp fw-imx/firmware-imx*/firmware/hdmi/cadence/signed_hdmi_imx8m.bin imx-mkimage/$MKIMG_DIR
 
     fi
 }
@@ -292,6 +305,7 @@ function sentinel_fetch {
     ./sent.bin --auto-accept
     cd firmware-sentinel-*
     cp mx8ulpa?-ahab-container.img ../../imx-mkimage/iMX8ULP
+    cp mx93*.img ../../imx-mkimage/iMX9
     cd ../..
 }
 
@@ -334,7 +348,7 @@ function download {
     [ ! -d imx-mkimage ] && repo_get imx-mkimage
     [ ! -d fw-imx ] && fw_fetch
 
-    if [[ $SOC == "8ulp" ]]; then
+    if [[ $SOC == "8ulp" ]] | [[ $SOC == "93" ]]; then
 	[ ! -d sentinel ] && sentinel_fetch
 	[ ! -d upower ] && upwr_fetch
 	[ ! -d m33_demo ] && m33demo_fetch
@@ -355,11 +369,11 @@ function build_uboot {
     [ ! -f .config ] && make ${MFLAG} $UBOOT_DEFCONFIG
     make ${MFLAG} -j `nproc`
     
-    cp ./tools/mkimage ../imx-mkimage/$MKIMG_8DIR/mkimage_uboot
-    cp ./u-boot-nodtb.bin ../imx-mkimage/$MKIMG_8DIR/
-    cp ./u-boot.bin ../imx-mkimage/$MKIMG_8DIR/
-    cp ./spl/u-boot-spl.bin ../imx-mkimage/$MKIMG_8DIR/
-    cp ./arch/arm/dts/imx$SOC*-evk.dtb ../imx-mkimage/$MKIMG_8DIR/
+    cp ./tools/mkimage ../imx-mkimage/$MKIMG_DIR/mkimage_uboot
+    cp ./u-boot-nodtb.bin ../imx-mkimage/$MKIMG_DIR/
+    cp ./u-boot.bin ../imx-mkimage/$MKIMG_DIR/
+    cp ./spl/u-boot-spl.bin ../imx-mkimage/$MKIMG_DIR/
+    cp ./arch/arm/dts/imx$SOC*-evk.dtb ../imx-mkimage/$MKIMG_DIR/
 
     cd ..
     [ -n "$V" ] && set +x
@@ -376,7 +390,7 @@ function build_atf {
     [ -n "$V" ] && set -x
     make ${MFLAG} PLAT=imx$SOC bl31
     [ -n "$V" ] && set +x
-    cp ./build/imx$SOC/release/bl31.bin ../imx-mkimage/$MKIMG_8DIR
+    cp ./build/imx$SOC/release/bl31.bin ../imx-mkimage/$MKIMG_DIR
     cd ..
     echo ${green}ATF build complete${clr}
 }
@@ -392,10 +406,13 @@ build_image() {
     [ -n "$CLEAN" ] && make SOC=iMX$SOCU clean 
     if [[ $SOC == "8ulp" ]]; then
 	make SOC=iMX$SOCU REV=$VERULP $FLASH_IMG
-        cp ./$MKIMG_8DIR/flash.bin ../${SOC_FLASH_NAME}
+        cp ./$MKIMG_DIR/flash.bin ../${SOC_FLASH_NAME}
+    elif [[ $SOC == "93" ]]; then
+	make SOC=iMX9 $FLASH_IMG
+	cp ./$MKIMG_DIR/flash.bin ../${SOC_FLASH_NAME}
     else
 	make SOC=iMX$SOCU $FLASH_IMG
-        cp ./$MKIMG_8DIR/flash.bin ../${SOC_FLASH_NAME}
+        cp ./$MKIMG_DIR/flash.bin ../${SOC_FLASH_NAME}
     fi
     cd ..    
     [ -n "$V" ] && set +x
