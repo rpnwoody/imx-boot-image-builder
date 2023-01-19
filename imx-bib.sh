@@ -246,7 +246,7 @@ function setupVar {
     FW_IMX=$(echo $FW_IMX_SCR | cut -d ' ' -f2)
     echo "FW_IMX =   " $FW_IMX
 
-    if [[ $SOC == "8ulp" ]] | [[ $SOC == "93" ]]; then
+    if [[ $SOC == "8ulp" ]] || [[ $SOC == "93" ]]; then
 	FW_UPOW=$(grep $FN_FW_POWER $SCR)
 	FWPOW=$(echo $FW_UPOW | cut -d ' ' -f2)
 	FW_SENT=$(grep $FN_FW_SENTINEL $SCR)
@@ -348,7 +348,7 @@ function download {
     [ ! -d imx-mkimage ] && repo_get imx-mkimage
     [ ! -d fw-imx ] && fw_fetch
 
-    if [[ $SOC == "8ulp" ]] | [[ $SOC == "93" ]]; then
+    if [ $SOC == '8ulp' ] || [ $SOC == '93' ]; then
 	[ ! -d sentinel ] && sentinel_fetch
 	[ ! -d upower ] && upwr_fetch
 	[ ! -d m33_demo ] && m33demo_fetch
