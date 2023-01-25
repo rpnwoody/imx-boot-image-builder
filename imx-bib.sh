@@ -35,7 +35,7 @@
 
 
 #Script version
-SCR_VER="2.0"
+SCR_VER="3.0"
 
 # Define script colors
 bold=`tput bold`
@@ -66,9 +66,12 @@ VERULP=""
 
 # Description: print help message and usage 
 function usage {
-        echo "Usage: $(basename $0) [-h] -p <soc> [-w <A0|A1>] [-c]" 2>&1
-        echo 'Create bootimage. Version ' ${SCR_VER}
-        echo '   -p soc       mandatory. options: 8ulp 8mm 8mn 8mp 8mq 93' 
+	echo "Usage: $(basename $0) [-h] -p <soc> [-w <A0|A1>] [-c]" 2>&1
+	echo 'Create bootimage. Version ' ${SCR_VER}
+	echo '   -p soc       mandatory: options: 8ulp 8mm 8mn 8mp 8mq 93' 
+	echo '   -b           optional: latest if not specified
+                      BSP Release in the form yocto_release-nxp_version
+		      example: -b hardknott-5.10.72-2.2.0'
 	echo '   -w A0|A1     which 8ULP version, default A1 if not given'
 	echo '   -m           EVK with ddr4 memory. Supported: 8mn, 8mm, 8mp. If no -m, EVK with LPDDR4'
 	echo '   -c           make clean then make'
@@ -102,7 +105,7 @@ if [[ ${#} -eq 0 ]]; then
 fi
 
 # Define list of arguments expected in the input
-optstring=":mhrcdp:w:"
+optstring=":mhrcdp:b:w:"
 
 while getopts ${optstring} arg; do
     case ${arg} in
@@ -133,6 +136,9 @@ while getopts ${optstring} arg; do
 		SOC_FLASH_NAME=$SOC"_evk_flash.bin"
 	    fi
 	    ;;
+	b)
+		RELEASE="${OPTARG}"
+		;;
 	m)
 	    if [[ $SOC == "8mm" || $SOC == "8mp" || $SOC == "8mn" ]]; then
 		FLASH_IMG=flash_ddr4_evk
@@ -193,14 +199,17 @@ function hostPkg {
 # Description: clone meta-imx
 function repo_get_metaimx {
 
-    README=$(wget -qO- $IMX_SW | grep README | head -1 | cut -d '"' -f6)
-    BRANCH=$(wget -qO- $README |  awk '/\$: repo init/ {count++} count==3 {print $12}')
-    MANIFEST=$(wget -qO- $README |  awk '/\$: repo init/ {count++} count==3 {print $23}')
-    RELNAME=$(echo $BRANCH | cut -d '-' -f3)
-    RELVER=$(basename $MANIFEST .xml | cut -b 5-)
+	if [ -z "$RELEASE" ]; then
+	    README=$(wget -qO- $IMX_SW | grep README | head -1 | cut -d '"' -f6)
+	    BRANCH=$(wget -qO- $README |  awk '/\$: repo init/ {count++} count==3 {print $12}')
+	    MANIFEST=$(wget -qO- $README |  awk '/\$: repo init/ {count++} count==3 {print $23}')
+	    RELNAME=$(echo $BRANCH | cut -d '-' -f3)
+	    RELVER=$(basename $MANIFEST .xml | cut -b 5-)
+		RELEASE=$RELNAME-$RELVER
+	fi
 
-    echo "git clone $REPO_GIT/meta-imx -b $RELNAME-$RELVER "
-    git clone $REPO_GIT/meta-imx -b $RELNAME-$RELVER
+    echo "git clone $REPO_GIT/meta-imx -b $RELEASE "
+    git clone $REPO_GIT/meta-imx -b $RELEASE
 
 }
 
