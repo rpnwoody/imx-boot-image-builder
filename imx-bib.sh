@@ -66,7 +66,7 @@ VERULP=""
 
 # Description: print help message and usage 
 function usage {
-	echo "Usage: $(basename $0) [-h] -p <soc> [-w <A0|A1>] [-c]" 2>&1
+	echo "Usage: $(basename $0) [-h] -p <soc> [-b] [-w <A0|A1>] [-c]" 2>&1
 	echo 'Create bootimage. Version ' ${SCR_VER}
 	echo '   -p soc       mandatory: options: 8ulp 8mm 8mn 8mp 8mq 93' 
 	echo '   -b           optional: latest if not specified
