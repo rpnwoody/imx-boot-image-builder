@@ -201,13 +201,18 @@ function repo_get_metaimx {
 
 	if [ -z "$RELEASE" ]; then
 	    README=$(wget -qO- $IMX_SW | grep README | head -1 | cut -d '"' -f6)
-	    BRANCH=$(wget -qO- $README |  awk '/\$: repo init/ {count++} count==3 {print $12}')
-	    MANIFEST=$(wget -qO- $README |  awk '/\$: repo init/ {count++} count==3 {print $23}')
+        echo "README " $README
+	    BRANCH=$(wget -qO- $README |  awk '/\$: repo init/ {count++} count==3 {print $12}'|head -1|sed 's/\"<>pre//')
+        echo "BRANCH " $BRANCH
+	    MANIFEST=$(wget -qO- $README |  awk '/\$: repo init/ {count++} count==3 {print $14}'|head -1)
 	    RELNAME=$(echo $BRANCH | cut -d '-' -f3)
-	    RELVER=$(basename $MANIFEST .xml | cut -b 5-)
+        echo "RELNAME " $RELNAME
+	    RELVER=$(basename $MANIFEST .xml | cut -b 5-|sed 's/\.xml\"><pre//')
+        echo "RELVER " $RELVER
 		RELEASE=$RELNAME-$RELVER
+        echo "RELEASE " $RELEASE
 	fi
-
+    #exit
     echo "git clone $REPO_GIT/meta-imx -b $RELEASE "
     git clone $REPO_GIT/meta-imx -b $RELEASE
 
