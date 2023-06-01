@@ -63,6 +63,7 @@ MFLAG=-s
 BDIR=`pwd`
 
 VERULP=""
+VERULPtmp=""
 
 # Description: print help message and usage 
 function usage {
@@ -110,7 +111,8 @@ optstring=":mhrcdp:b:w:"
 while getopts ${optstring} arg; do
     case ${arg} in
 	w)
-	    VERULP="${OPTARG}"
+	    VERULPtmp="${OPTARG}"
+	    VERULP=$(echo ${VERULPtmp}|tr "[:lower:]" "[:upper:]");
 	    echo "VERULP = " $VERULP
 	    SOC_FLASH_NAME=$SOC"_"$VERULP"_evk_flash.bin"
 	    ;;
@@ -323,6 +325,7 @@ function sentinel_fetch {
     cd ../..
 }
 
+
 # Description: 8ulp uPower firmware
 function upwr_fetch {
     mkdir upower
@@ -332,12 +335,14 @@ function upwr_fetch {
     ./pwr.bin --auto-accept
     cd firmware-upower-*
     cp upower_a?.bin ../../imx-mkimage/iMX8ULP
+    
     if [[ $VERULP == "A1" ]]; then
-	ln -s ../../imx-mkimage/iMX8ULP/upower_a1.bin ../../imx-mkimage/iMX8ULP/upower.bin;
+	ln -fs ../../imx-mkimage/iMX8ULP/upower_a1.bin ../../imx-mkimage/iMX8ULP/upower.bin;
     else
-	ln -s ../../imx-mkimage/iMX8ULP/upower_a0.bin ../../imx-mkimage/iMX8ULP/upower.bin;
+	echo "Trying to use upower_a0"
+	ln -fs ../../imx-mkimage/iMX8ULP/upower_a0.bin ../../imx-mkimage/iMX8ULP/upower.bin;
     fi
-   
+    
     cd ../..
 }
 
@@ -415,6 +420,22 @@ build_image() {
     # Build the boot image
     echo ${cyan}Building Boot Image${clr}
     [ -n "$V" ] && set -x
+
+    # set uPower FW version if 8ULP
+    if [[ $SOC == "8ulp" ]]; then
+
+	pushd imx-mkimage/iMX8ULP
+	
+	if [[ $VERULP == "A1" ]]; then
+	    ln -fs upower_a1.bin upower.bin;
+	else
+	ln -fs upower_a0.bin upower.bin;
+	fi
+
+	popd
+    fi
+
+    
     cd imx-mkimage/
     pwd
     [ -n "$CLEAN" ] && make SOC=iMX$SOCU clean 
