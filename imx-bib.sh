@@ -337,10 +337,10 @@ function upwr_fetch {
     cp upower_a?.bin ../../imx-mkimage/iMX8ULP
     
     if [[ $VERULP == "A1" ]]; then
-	ln -fs ../../imx-mkimage/iMX8ULP/upower_a1.bin ../../imx-mkimage/iMX8ULP/upower.bin;
+	ln -sf $PWD/firmware-upower-*/upower_a1.bin ../imx-mkimage/iMX8ULP/upower.bin
     else
 	echo "Trying to use upower_a0"
-	ln -fs ../../imx-mkimage/iMX8ULP/upower_a0.bin ../../imx-mkimage/iMX8ULP/upower.bin;
+	ln -sf $PWD/firmware-upower-*/upower_a0.bin ../imx-mkimage/iMX8ULP/upower.bin
     fi
     
     cd ../..
@@ -354,9 +354,8 @@ function m33demo_fetch {
     curl -R -k -f $NXP_FILES/$FWM33DEMO -o demo.bin
     chmod a+x ./demo.bin
     ./demo.bin --auto-accept
-    cd imx8ulp-m33-demo-*
-    cp imx8ulp_m33_TCM_rpmsg_lite_str_echo_rtos.bin ../../imx-mkimage/iMX8ULP/m33_image.bin
-    cd ../..
+    ln -sf $PWD/imx8ulp-m33-demo-*/imx8ulp_m33_TCM_power_mode_switch.bin ../imx-mkimage/iMX8ULP/m33_image.bin
+    cd ..
 }
 
 # Description: Download git repos and NXP binary files if dir for each
